@@ -15,7 +15,7 @@ Antes de iniciar, asegúrate de contar con el siguiente software instalado en tu
 | **Node.js** | Node.js v20.x o v24.x LTS (con npm 10+) | Entorno de ejecución para dependencias y bundling del frontend |
 | **XAMPP** | Versión 8.0 o superior (con MySQL y Apache) | Servidor de base de datos relacional local |
 | **Apache Maven** | Versión 3.9+ (o utilizar el Maven integrado en `backend/tools`) | Gestor de dependencias y empaquetado Java |
-| **Docker Desktop** | Opcional (Requerido solo para SonarQube) | Auditoría de calidad de código y análisis estático |
+
 
 ---
 
