@@ -5,7 +5,7 @@ Esta guía describe el procedimiento técnico detallado para instalar dependenci
 
 ---
 
-## 1. Prerrequisitos del Sistema
+## 1. Prerrequisitos del Sistema transigovAI
 
 Antes de iniciar, asegúrate de contar con el siguiente software instalado en tu equipo:
 
