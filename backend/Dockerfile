@@ -16,12 +16,16 @@ RUN mvn clean package -DskipTests
 FROM eclipse-temurin:21-jre-alpine
 WORKDIR /app
 
-# Crear usuario sin privilegios por seguridad
-RUN addgroup -S spring && adduser -S spring -G spring
-USER spring:spring
+# Crear directorios necesarios (logs y uploads) con permisos para el usuario spring
+RUN addgroup -S spring && adduser -S spring -G spring && \
+    mkdir -p /app/logs /app/uploads && \
+    chown -R spring:spring /app
 
-# Copiar el artefacto generado
-COPY --from=build /app/target/*.jar app.jar
+# Copiar el artefacto generado con propietario spring
+COPY --from=build --chown=spring:spring /app/target/*.jar app.jar
+
+# Cambiar a usuario no privilegiado
+USER spring:spring
 
 # Variables de entorno por defecto
 ENV PORT=8080
