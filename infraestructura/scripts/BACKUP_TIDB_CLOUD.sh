@@ -4,7 +4,7 @@
 # MTC Marcona - Unidad 4: Mantenimiento y Respaldo Automatizado
 # ==============================================================================
 # Reglas de Seguridad: Cero contraseñas hardcodeadas. Lee únicamente variables de entorno.
-# Compatible con TiDB Serverless: SSL VERIFY_IDENTITY, single-transaction, no GTID.
+# Compatible con TiDB Serverless: SSL VERIFY_IDENTITY, skip-lock-tables, no GTID.
 # ==============================================================================
 
 set -euo pipefail
@@ -79,11 +79,12 @@ mysqldump \
   --user="${DB_USER}" \
   --ssl-mode=VERIFY_IDENTITY \
   --ssl-ca="${SSL_CA}" \
-  --single-transaction \
   --set-gtid-purged=OFF \
   --column-statistics=0 \
-  --routines \
-  --triggers \
+  --skip-lock-tables \
+  --skip-add-locks \
+  --no-tablespaces \
+  --skip-triggers \
   --default-character-set=utf8mb4 \
   "${DB_NAME}" | gzip -9 > "${BACKUP_FILE}"
 
