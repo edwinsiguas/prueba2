@@ -5,12 +5,12 @@ WORKDIR /app
 # Copiar descriptor de dependencias
 COPY pom.xml .
 
-# Descargar dependencias en caché
-RUN mvn dependency:go-offline -B
+# Descargar dependencias en caché (en modo batch sin barras de progreso ruidosas)
+RUN mvn dependency:go-offline -B --no-transfer-progress
 
 # Copiar código fuente y compilar JAR de producción
 COPY src ./src
-RUN mvn clean package -DskipTests
+RUN mvn clean package -DskipTests -B --no-transfer-progress
 
 # Etapa 2: Imagen ligera de ejecución en producción
 FROM eclipse-temurin:21-jre-alpine
@@ -31,5 +31,5 @@ USER spring:spring
 ENV PORT=8080
 EXPOSE 8080
 
-# Comando de inicio optimizado para contenedores
-ENTRYPOINT ["java", "-Djava.security.egd=file:/dev/./urandom", "-jar", "app.jar"]
+# Comando de inicio optimizado para contenedores de 512 MB (Render Free Tier)
+ENTRYPOINT ["java", "-XX:+UseContainerSupport", "-XX:MaxRAMPercentage=75.0", "-Djava.security.egd=file:/dev/./urandom", "-jar", "app.jar"]

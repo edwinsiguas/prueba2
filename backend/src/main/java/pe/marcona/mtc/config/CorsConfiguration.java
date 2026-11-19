@@ -28,11 +28,14 @@ public class CorsConfiguration implements WebMvcConfigurer {
             @Value("${APP_URL:http://localhost:5173}") String appUrl) {
 
         Set<String> originsSet = new LinkedHashSet<>();
-        // Permitir explícitamente los orígenes de desarrollo local (Vite y React)
+        // Permitir orígenes de desarrollo local
         originsSet.add("http://localhost:5173");
         originsSet.add("http://127.0.0.1:5173");
         originsSet.add("http://localhost:3000");
         originsSet.add("http://127.0.0.1:3000");
+        // Permitir dominios de despliegue Vercel
+        originsSet.add("https://*.vercel.app");
+        originsSet.add("https://prueba2-blush.vercel.app");
 
         if (appUrl != null && !appUrl.isBlank()) {
             originsSet.add(appUrl.trim());
@@ -61,7 +64,7 @@ public class CorsConfiguration implements WebMvcConfigurer {
     @Override
     public void addCorsMappings(CorsRegistry registry) {
         registry.addMapping("/**")
-                .allowedOrigins(origins)
+                .allowedOriginPatterns(origins)
                 .allowedMethods("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS")
                 .allowedHeaders("*")
                 .allowCredentials(true)
@@ -74,7 +77,7 @@ public class CorsConfiguration implements WebMvcConfigurer {
         var source = new UrlBasedCorsConfigurationSource();
         var config = new org.springframework.web.cors.CorsConfiguration();
         config.setAllowCredentials(true);
-        config.setAllowedOrigins(List.of(origins));
+        config.setAllowedOriginPatterns(List.of(origins));
         config.setAllowedHeaders(List.of("*"));
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
         config.setMaxAge(86400L);
