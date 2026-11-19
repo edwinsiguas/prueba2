@@ -64,8 +64,30 @@ echo "🚀 Ejecutando restauración..."
 export MYSQL_PWD="${DB_PASSWORD}"
 
 SSL_OPTS=""
-if [[ "${DB_PORT}" == "4000" || "${DB_HOST}" == *"tidbcloud.com"* ]]; then
-  SSL_OPTS="--ssl-mode=VERIFY_IDENTITY"
+if [[ "${DB_PORT}" == "4000" || "${DB_HOST}" == *"tidbcloud.com"* || -n "${DB_SSL_CA:-}" ]]; then
+  SSL_CA="${DB_SSL_CA:-}"
+  if [[ -z "${SSL_CA}" ]]; then
+    for candidate in \
+      "/etc/ssl/certs/ca-certificates.crt" \
+      "/etc/pki/tls/certs/ca-bundle.crt" \
+      "/etc/ssl/cert.pem"; do
+      if [[ -f "${candidate}" ]]; then
+        SSL_CA="${candidate}"
+        break
+      fi
+    done
+  fi
+
+  if [[ -z "${SSL_CA}" || ! -f "${SSL_CA}" ]]; then
+    echo "❌ [ERROR] No se encontró el bundle de certificados CA del sistema."
+    echo "    Requerido por mysql para conexión segura SSL ('--ssl-mode=VERIFY_IDENTITY')."
+    echo "    Por favor instala 'ca-certificates' (ej. apt install -y ca-certificates o apk add ca-certificates)"
+    echo "    o define la ruta manualmente exportando la variable 'DB_SSL_CA'."
+    exit 1
+  fi
+
+  echo "🔒 Usando certificado CA: ${SSL_CA}"
+  SSL_OPTS="--ssl-mode=VERIFY_IDENTITY --ssl-ca=${SSL_CA}"
 fi
 
 if [[ "${BACKUP_FILE}" == *.gz ]]; then

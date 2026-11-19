@@ -45,7 +45,31 @@ echo "    Usuario: ${DB_USER}"
 echo "    Destino: ${BACKUP_FILE}"
 echo "================================================================="
 
-# 2. Ejecutar mysqldump con parámetros compatibles con TiDB Cloud Serverless
+# 2. Autodetección del bundle de certificados CA del sistema para SSL
+SSL_CA="${DB_SSL_CA:-}"
+if [[ -z "${SSL_CA}" ]]; then
+  for candidate in \
+    "/etc/ssl/certs/ca-certificates.crt" \
+    "/etc/pki/tls/certs/ca-bundle.crt" \
+    "/etc/ssl/cert.pem"; do
+    if [[ -f "${candidate}" ]]; then
+      SSL_CA="${candidate}"
+      break
+    fi
+  done
+fi
+
+if [[ -z "${SSL_CA}" || ! -f "${SSL_CA}" ]]; then
+  echo "❌ [ERROR] No se encontró el bundle de certificados CA del sistema."
+  echo "    Requerido por mysqldump para '--ssl-mode=VERIFY_IDENTITY'."
+  echo "    Por favor instala 'ca-certificates' (ej. apt install -y ca-certificates o apk add ca-certificates)"
+  echo "    o define la ruta manualmente exportando la variable 'DB_SSL_CA'."
+  exit 1
+fi
+
+echo "🔒 Usando certificado CA: ${SSL_CA}"
+
+# 3. Ejecutar mysqldump con parámetros compatibles con TiDB Cloud Serverless
 # NOTA: MYSQL_PWD evita exponer la contraseña en la tabla de procesos ps
 export MYSQL_PWD="${DB_PASSWORD}"
 
@@ -54,6 +78,7 @@ mysqldump \
   --port="${DB_PORT}" \
   --user="${DB_USER}" \
   --ssl-mode=VERIFY_IDENTITY \
+  --ssl-ca="${SSL_CA}" \
   --single-transaction \
   --set-gtid-purged=OFF \
   --column-statistics=0 \
