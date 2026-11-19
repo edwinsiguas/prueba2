@@ -103,7 +103,8 @@ public class EmpresaServiceImpl implements IEmpresaService {
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Empresa no encontrada"));
 
         long id = ((Number) empresa.get("id")).longValue();
-        auditoriaService.registrarAccion(idActor, "crear", "empresa", id, "Empresa creada: " + nombre, solicitud);
+        auditoriaService.registrarAccion(idActor, "CREAR", "empresa", id,
+                String.format("Creación de empresa: %s (RUC %s, Contacto: %s)", nombre, ruc, contacto), solicitud);
         log.info("Empresa creada con éxito: id={}, ruc={}", id, ruc);
 
         return formatearFechas(empresa);
@@ -112,7 +113,7 @@ public class EmpresaServiceImpl implements IEmpresaService {
     @Override
     public Map<String, Object> actualizarEmpresa(Map<String, Object> entrada, HttpServletRequest solicitud, long idActor) {
         long id = parsearIdPositivo(entrada.get("id"));
-        empresaDao.obtenerPorId(id)
+        Map<String, Object> empresaPrevia = empresaDao.obtenerPorId(id)
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Empresa no encontrada"));
 
         String nombre = textoRequerido(entrada, "nombre", 3, 150);
@@ -148,8 +149,15 @@ public class EmpresaServiceImpl implements IEmpresaService {
             throw errorValidacion("El nombre de la empresa o RUC ya está registrado");
         }
 
-        auditoriaService.registrarAccion(idActor, "actualizar", "empresa", id, "Empresa actualizada: " + nombre, solicitud);
-        log.info("Empresa actualizada: id={}", id);
+        String estadoAnterior = String.valueOf(empresaPrevia.getOrDefault("estado", "activo"));
+        String accionAuditoria = "ACTUALIZAR";
+        if (!estado.equalsIgnoreCase(estadoAnterior)) {
+            accionAuditoria = "inactivo".equalsIgnoreCase(estado) ? "DESACTIVAR" : "REACTIVAR";
+        }
+
+        auditoriaService.registrarAccion(idActor, accionAuditoria, "empresa", id,
+                String.format("Actualización de empresa: %s (RUC %s). Estado: %s", nombre, ruc, estado.toUpperCase()), solicitud);
+        log.info("Empresa actualizada: id={}, accion={}", id, accionAuditoria);
 
         return formatearFechas(empresaDao.obtenerPorId(id)
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Empresa no encontrada")));
@@ -163,9 +171,14 @@ public class EmpresaServiceImpl implements IEmpresaService {
         String nuevoEstado = "activo".equals(empresa.get("estado")) ? "inactivo" : "activo";
         empresaDao.actualizarEstado(id, nuevoEstado);
 
-        auditoriaService.registrarAccion(idActor, "cambio_estado", "empresa", id,
-                "Estado de empresa '" + empresa.get("nombre") + "' cambiado a " + nuevoEstado, solicitud);
-        log.info("Estado de empresa alternado: id={}, estado={}", id, nuevoEstado);
+        String accionAuditoria = "inactivo".equals(nuevoEstado) ? "DESACTIVAR" : "REACTIVAR";
+        String descripcionAuditoria = "inactivo".equals(nuevoEstado)
+                ? String.format("Desactivación de empresa: %s (RUC %s). Estado: ACTIVO -> INACTIVO", empresa.get("nombre"), empresa.get("ruc"))
+                : String.format("Reactivación de empresa: %s (RUC %s). Estado: INACTIVO -> ACTIVO", empresa.get("nombre"), empresa.get("ruc"));
+
+        auditoriaService.registrarAccion(idActor, accionAuditoria, "empresa", id,
+                descripcionAuditoria, solicitud);
+        log.info("Estado de empresa alternado: id={}, accion={}, estado={}", id, accionAuditoria, nuevoEstado);
 
         return Map.of("id", id, "estado", nuevoEstado);
     }

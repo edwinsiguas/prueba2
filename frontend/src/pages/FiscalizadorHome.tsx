@@ -4,7 +4,7 @@ import { apiClient } from '@/lib/api-client'
 import { useAuth } from '@/hooks/useAuth'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { ScanLine, CheckCircle2, XCircle, Clock, ShieldCheck, ChevronRight } from 'lucide-react'
+import { ScanLine, CheckCircle2, XCircle, Clock, ShieldCheck, ChevronRight, HelpCircle } from 'lucide-react'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
 import { Verification } from '@/types'
@@ -62,6 +62,22 @@ export function FiscalizadorHome() {
               <ScanLine className="w-10 h-10 text-white" />
             </div>
           </div>
+        </div>
+      </Link>
+
+      {/* Acceso Rápido: Centro de Ayuda y Preguntas Frecuentes para Fiscalizadores */}
+      <Link to="/faq">
+        <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-sm hover:border-slate-300 transition-all flex items-center justify-between group cursor-pointer">
+          <div className="flex items-center gap-3.5">
+            <div className="w-10 h-10 rounded-xl bg-sky-50 text-[#0A2342] flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+              <HelpCircle className="w-5 h-5 text-sky-700" />
+            </div>
+            <div>
+              <p className="text-sm font-bold text-slate-900 leading-tight">Preguntas Frecuentes y Guía de Campo</p>
+              <p className="text-xs text-slate-500 font-medium mt-0.5">Qué hacer ante QR dañado, SOAT vencido o chofer no asignado</p>
+            </div>
+          </div>
+          <ChevronRight className="w-5 h-5 text-slate-400 group-hover:text-slate-600 transition-colors shrink-0" />
         </div>
       </Link>
 

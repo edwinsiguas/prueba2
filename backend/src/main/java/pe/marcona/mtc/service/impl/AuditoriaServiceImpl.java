@@ -52,7 +52,7 @@ public class AuditoriaServiceImpl implements IAuditoriaService {
             String descripcion,
             HttpServletRequest solicitud) {
 
-        String ip = solicitud != null ? solicitud.getRemoteAddr() : "127.0.0.1";
+        String ip = normalizarIp(solicitud);
         try {
             auditoriaDao.insertarRegistro(idActor, accion, entidad, idEntidad, descripcion, ip);
         } catch (DataAccessException ex) {
@@ -86,30 +86,66 @@ public class AuditoriaServiceImpl implements IAuditoriaService {
     @Override
     public Map<String, Object> listarHistorial(Map<String, String> consulta) {
         int pagina = enteroPositivo(consulta.get("page"), 1);
-        int limite = enteroPositivo(consulta.get("limit"), 10);
+        int limite = enteroRango(consulta.get("limit"), 10, 1, 100);
         long desplazamiento = (long) (pagina - 1) * limite;
 
         Long idUsuario = parsearLongOpcional(consulta.get("user_id"));
         String accion = texto(consulta.get("accion"));
         String entidad = texto(consulta.get("entidad"));
+        String busqueda = texto(consulta.get("q"));
+        if (busqueda == null) {
+            busqueda = texto(consulta.get("search"));
+        }
+        if (busqueda == null) {
+            busqueda = texto(consulta.get("usuario"));
+        }
+        String fecha = texto(consulta.get("fecha"));
+        if (fecha == null) {
+            fecha = texto(consulta.get("date"));
+        }
 
-        long total = auditoriaDao.contarHistorial(idUsuario, accion, entidad);
-        List<Map<String, Object>> filas = auditoriaDao.listarHistorial(idUsuario, accion, entidad, limite, desplazamiento)
+        long total = auditoriaDao.contarHistorial(idUsuario, accion, entidad, busqueda, fecha);
+        List<Map<String, Object>> filas = auditoriaDao.listarHistorial(idUsuario, accion, entidad, busqueda, fecha, limite, desplazamiento)
                 .stream()
                 .map(this::formatearFechas)
                 .toList();
 
-        long paginas = total == 0 ? 0 : (total + limite - 1) / limite;
+        long paginas = total == 0 ? 1 : (long) Math.ceil((double) total / limite);
 
-        return Map.of(
-                "data", filas,
-                "pagination", Map.of(
-                        "page", pagina,
-                        "limit", limite,
-                        "total", total,
-                        "pages", paginas
-                )
-        );
+        var paginacion = new LinkedHashMap<String, Object>();
+        paginacion.put("page", pagina);
+        paginacion.put("limit", limite);
+        paginacion.put("total", total);
+        paginacion.put("pages", paginas);
+        paginacion.put("totalPages", paginas);
+
+        var respuesta = new LinkedHashMap<String, Object>();
+        respuesta.put("data", filas);
+        respuesta.put("items", filas);
+        respuesta.put("total", total);
+        respuesta.put("page", pagina);
+        respuesta.put("limit", limite);
+        respuesta.put("totalPages", paginas);
+        respuesta.put("pagination", paginacion);
+        return respuesta;
+    }
+
+    private String normalizarIp(HttpServletRequest solicitud) {
+        if (solicitud == null) return "127.0.0.1";
+        String ip = solicitud.getHeader("X-Forwarded-For");
+        if (ip != null && !ip.isBlank() && !"unknown".equalsIgnoreCase(ip)) {
+            ip = ip.split(",")[0].trim();
+        }
+        if (ip == null || ip.isBlank() || "unknown".equalsIgnoreCase(ip)) {
+            ip = solicitud.getHeader("X-Real-IP");
+        }
+        if (ip == null || ip.isBlank() || "unknown".equalsIgnoreCase(ip)) {
+            ip = solicitud.getRemoteAddr();
+        }
+        if ("0:0:0:0:0:0:0:1".equals(ip) || "::1".equals(ip)) {
+            ip = "127.0.0.1";
+        }
+        return (ip != null && !ip.isBlank()) ? ip : "127.0.0.1";
     }
 
     private Map<String, Object> formatearFechas(Map<String, Object> fila) {
@@ -125,6 +161,16 @@ public class AuditoriaServiceImpl implements IAuditoriaService {
         if (valor == null || valor.isBlank()) return porDefecto;
         try {
             return Math.max(1, Integer.parseInt(valor.trim()));
+        } catch (NumberFormatException e) {
+            return porDefecto;
+        }
+    }
+
+    private int enteroRango(String valor, int porDefecto, int min, int max) {
+        if (valor == null || valor.isBlank()) return porDefecto;
+        try {
+            int num = Integer.parseInt(valor.trim());
+            return Math.max(min, Math.min(max, num));
         } catch (NumberFormatException e) {
             return porDefecto;
         }

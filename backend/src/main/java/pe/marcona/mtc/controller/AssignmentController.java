@@ -62,8 +62,13 @@ public class AssignmentController {
         long actorId = ((Number) actor.get("id")).longValue();
         Map<String, Object> assignment = asignacionService.asignar(body == null ? Map.of() : body, actorId);
         long vehicleId = ((Number) assignment.get("vehicle_id")).longValue();
-        auditoriaService.registrarAccion(actorId, "asignar_conductor", "vehiculo", vehicleId,
-                "Conductor ID " + assignment.get("driver_id") + " asignado como " + assignment.get("tipo"), request);
+        String placa = assignment.get("placa") != null ? String.valueOf(assignment.get("placa")) : ("ID #" + vehicleId);
+        String chofer = assignment.get("nombre_completo") != null
+                ? String.valueOf(assignment.get("nombre_completo"))
+                : ("Conductor ID " + assignment.get("driver_id"));
+
+        auditoriaService.registrarAccion(actorId, "ASIGNAR", "asignacion", vehicleId,
+                String.format("Asignación vehicular: %s asignado al vehículo placa %s (Tipo: %s)", chofer, placa, assignment.get("tipo")), request);
         return ApiResponse.success(assignment, "Conductor asignado exitosamente");
     }
 
@@ -107,8 +112,8 @@ public class AssignmentController {
             throw new ApiException(HttpStatus.NOT_FOUND, "No se encontró asignación activa para este vehículo");
         }
 
-        auditoriaService.registrarAccion(actorId, "desasignar_conductor", "vehiculo", id,
-                "Conductor desasignado del vehículo", request);
+        auditoriaService.registrarAccion(actorId, "DESASIGNAR", "asignacion", id,
+                String.format("Desasignación de conductor del vehículo ID #%d", id), request);
 
         return ApiResponse.success(null, "Conductor desasignado correctamente");
     }

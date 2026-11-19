@@ -1,4 +1,5 @@
 import axios, { AxiosInstance, AxiosError } from 'axios'
+import { ActionLog, PaginatedResponse } from '@/types'
 
 const API_BASE_URL = (
   import.meta.env.VITE_API_URL || import.meta.env.VITE_JAVA_API_URL || 'http://localhost:8080/api'
@@ -282,12 +283,12 @@ class APIClient {
     return response.data
   }
 
-  async listAuditoria(params: any = {}) {
+  async listAuditoria(params: Record<string, any> = {}): Promise<PaginatedResponse<ActionLog>> {
     try {
-      const response = await javaClient.get('/auditoria', { params })
+      const response = await javaClient.get<PaginatedResponse<ActionLog>>('/auditoria', { params })
       return response.data
     } catch {
-      const fallback = await javaClient.get('/logs/list.php', { params })
+      const fallback = await javaClient.get<PaginatedResponse<ActionLog>>('/logs/list.php', { params })
       return fallback.data
     }
   }

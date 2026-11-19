@@ -116,7 +116,8 @@ public class UsuarioServiceImpl implements IUsuarioService {
         long idUsuario = ((Number) creado.get("id")).longValue();
         long idActor = ((Number) actor.get("id")).longValue();
 
-        auditoriaService.registrarAccion(idActor, "crear", "usuario", idUsuario, "Usuario creado: " + email, solicitud);
+        auditoriaService.registrarAccion(idActor, "CREAR", "usuario", idUsuario,
+                String.format("Creación de usuario: %s (Nombre: %s, Rol: %s)", email, nombre, rol), solicitud);
         log.info("Usuario creado exitosamente: id={}, email={}", idUsuario, email);
 
         return formatearMarcasDeTiempo(creado);
@@ -136,9 +137,8 @@ public class UsuarioServiceImpl implements IUsuarioService {
             throw new ApiException(HttpStatus.FORBIDDEN, "No tienes permiso para editar este usuario");
         }
 
-        if (usuarioDao.obtenerPorId(idUsuario).isEmpty()) {
-            throw new ApiException(HttpStatus.NOT_FOUND, "Usuario no encontrado");
-        }
+        Map<String, Object> usuarioPrevio = usuarioDao.obtenerPorId(idUsuario)
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Usuario no encontrado"));
 
         Map<String, Object> cambios = new LinkedHashMap<>();
 
@@ -197,8 +197,26 @@ public class UsuarioServiceImpl implements IUsuarioService {
             throw new ApiException(HttpStatus.BAD_REQUEST, "El email ya está registrado");
         }
 
-        auditoriaService.registrarAccion(idActor, "actualizar", "usuario", idUsuario, "Credenciales actualizadas", solicitud);
-        log.info("Usuario actualizado exitosamente: id={}", idUsuario);
+        String emailUsuario = String.valueOf(usuarioPrevio.getOrDefault("email", "ID " + idUsuario));
+        String accionAuditoria = "ACTUALIZAR";
+        String desc;
+        if (cambios.containsKey("is_active") && Integer.valueOf(0).equals(cambios.get("is_active"))) {
+            accionAuditoria = "DESACTIVAR";
+            desc = String.format("Desactivación/Bloqueo de cuenta de usuario: %s", emailUsuario);
+        } else if (cambios.containsKey("is_active") && Integer.valueOf(1).equals(cambios.get("is_active"))) {
+            accionAuditoria = "REACTIVAR";
+            desc = String.format("Reactivación de cuenta de usuario: %s", emailUsuario);
+        } else if (cambios.containsKey("estado") && "inactivo".equalsIgnoreCase(String.valueOf(cambios.get("estado")))) {
+            accionAuditoria = "DESACTIVAR";
+            desc = String.format("Desactivación/Bloqueo de cuenta de usuario: %s", emailUsuario);
+        } else {
+            List<String> camposMod = cambios.keySet().stream().filter(k -> !"password".equals(k)).toList();
+            desc = String.format("Actualización de usuario %s (campos modificados: %s%s)",
+                    emailUsuario, String.join(", ", camposMod), cambios.containsKey("password") ? ", contraseña" : "");
+        }
+
+        auditoriaService.registrarAccion(idActor, accionAuditoria, "usuario", idUsuario, desc, solicitud);
+        log.info("Usuario actualizado exitosamente: id={}, accion={}", idUsuario, accionAuditoria);
 
         Map<String, Object> actualizado = usuarioDao.obtenerPorId(idUsuario)
                 .orElseThrow(() -> new ApiException(HttpStatus.INTERNAL_SERVER_ERROR, "Error al recuperar usuario actualizado"));

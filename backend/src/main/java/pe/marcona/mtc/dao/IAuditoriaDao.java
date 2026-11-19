@@ -10,9 +10,17 @@ public interface IAuditoriaDao {
 
     void insertarRegistro(long idUsuario, String accion, String entidad, long idEntidad, String descripcion, String ip);
 
-    long contarHistorial(Long idUsuario, String accion, String entidad);
+    long contarHistorial(Long idUsuario, String accion, String entidad, String busqueda, String fecha);
 
-    List<Map<String, Object>> listarHistorial(Long idUsuario, String accion, String entidad, int limite, long desplazamiento);
+    List<Map<String, Object>> listarHistorial(Long idUsuario, String accion, String entidad, String busqueda, String fecha, int limite, long desplazamiento);
+
+    default long contarHistorial(Long idUsuario, String accion, String entidad) {
+        return contarHistorial(idUsuario, accion, entidad, null, null);
+    }
+
+    default List<Map<String, Object>> listarHistorial(Long idUsuario, String accion, String entidad, int limite, long desplazamiento) {
+        return listarHistorial(idUsuario, accion, entidad, null, null, limite, desplazamiento);
+    }
 }
 
 

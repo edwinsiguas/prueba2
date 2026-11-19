@@ -149,6 +149,8 @@ public class PermisoServiceImpl implements IPermisoService {
         String observaciones = texto(datosEntrada.get("observaciones"));
         String numeroRecibo = textoOpcional(datosEntrada.get("numero_recibo"));
         BigDecimal montoPagado = parsearBigDecimal(datosEntrada.get("monto_pagado"));
+        String placaVehiculo = String.valueOf(asignacion.getOrDefault("placa", "ID " + idVehiculo));
+        String conductorNombre = String.valueOf(asignacion.getOrDefault("nombre_completo", "ID " + idConductor));
 
         long idPermisoGenerado = permisoDao.insertarPermiso(
                 idAsignacion, idVehiculo, idConductor, idEmpresa,
@@ -156,8 +158,9 @@ public class PermisoServiceImpl implements IPermisoService {
                 observaciones, qrBase64, idActor,
                 numeroRecibo, montoPagado);
 
-        auditoriaService.registrarAccion(idActor, "generar_permiso", "permiso", idPermisoGenerado,
-                "Permiso generado: " + numeroPermiso, solicitud);
+        auditoriaService.registrarAccion(idActor, "CREAR", "permiso", idPermisoGenerado,
+                String.format("Emisión de permiso TUC N° %s para vehículo placa %s (Conductor: %s, Vence: %s)",
+                        numeroPermiso, placaVehiculo, conductorNombre, fechaVencimiento), solicitud);
 
         log.info("Permiso emitido exitosamente: id={}, numero={}", idPermisoGenerado, numeroPermiso);
         return obtenerPermisoPorId(idPermisoGenerado);
@@ -168,10 +171,16 @@ public class PermisoServiceImpl implements IPermisoService {
     public boolean revocarPermiso(long idPermiso, String motivo, long idActor, HttpServletRequest solicitud) {
         String motivoLimpio = motivo == null || motivo.isBlank() ? "Revocado por administrador" : motivo.trim();
 
+        Map<String, Object> permiso = permisoDao.obtenerPorId(idPermiso).orElse(Map.of());
+        String numeroPermiso = String.valueOf(permiso.getOrDefault("numero_permiso", "ID #" + idPermiso));
+        String placa = String.valueOf(permiso.getOrDefault("placa", ""));
+
         boolean revocado = permisoDao.revocarPermiso(idPermiso, motivoLimpio);
         if (revocado) {
-            auditoriaService.registrarAccion(idActor, "revocar_permiso", "permiso", idPermiso, motivoLimpio, solicitud);
-            log.info("Permiso revocado: id={}, motivo={}", idPermiso, motivoLimpio);
+            String desc = String.format("Anulación de permiso TUC N° %s%s. Motivo: %s",
+                    numeroPermiso, placa.isBlank() ? "" : (" del vehículo placa " + placa), motivoLimpio);
+            auditoriaService.registrarAccion(idActor, "ANULAR", "permiso", idPermiso, desc, solicitud);
+            log.info("Permiso revocado: id={}, numero={}, motivo={}", idPermiso, numeroPermiso, motivoLimpio);
             return true;
         }
         return false;
@@ -243,8 +252,11 @@ public class PermisoServiceImpl implements IPermisoService {
                 observacionesLimpias, qrBase64, idActor,
                 numeroRecibo, montoPagado);
 
-        auditoriaService.registrarAccion(idActor, "renovar_permiso", "permiso", idNuevoPermiso,
-                "Permiso renovado a partir del ID " + idPermisoAntiguo, solicitud);
+        String placaVehiculo = String.valueOf(vehiculo.getOrDefault("placa", "Vehículo #" + idVehiculo));
+        String desc = String.format("Renovación de permiso TUC N° %s (anterior: %s) para vehículo placa %s (Vence: %s)",
+                numeroPermiso, permisoAntiguo.get("numero_permiso"), placaVehiculo, nuevoVencimiento);
+
+        auditoriaService.registrarAccion(idActor, "RENOVAR", "permiso", idNuevoPermiso, desc, solicitud);
 
         log.info("Permiso renovado: idAntiguo={}, idNuevo={}", idPermisoAntiguo, idNuevoPermiso);
         return obtenerPermisoPorId(idNuevoPermiso);
@@ -273,8 +285,8 @@ public class PermisoServiceImpl implements IPermisoService {
 
         for (Long id : idsExpirados) {
             permisoDao.marcarComoVencido(id);
-            auditoriaService.registrarAccion(idActor, "vencimiento_automatico", "permiso", id,
-                    "Permiso vencido automáticamente por fecha de vencimiento", solicitud);
+            auditoriaService.registrarAccion(idActor, "CAMBIO_ESTADO", "permiso", id,
+                    "Permiso TUC N° " + id + " marcado como VENCIDO automáticamente por fecha", solicitud);
         }
 
         log.info("Permisos vencidos automáticamente marcados: {}", idsExpirados.size());

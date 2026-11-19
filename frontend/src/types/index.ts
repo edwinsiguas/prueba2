@@ -171,16 +171,24 @@ export interface ActionLog {
   created_at: string
 }
 
+export interface AuditPagination {
+  page: number
+  limit: number
+  total: number
+  pages: number
+  totalPages?: number
+}
+
 export interface PaginatedResponse<T> {
   success: boolean
   data: {
     data: T[]
-    pagination: {
-      page: number
-      limit: number
-      total: number
-      pages: number
-    }
+    items?: T[]
+    total?: number
+    page?: number
+    limit?: number
+    totalPages?: number
+    pagination: AuditPagination
   }
   message: string | null
 }

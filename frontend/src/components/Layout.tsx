@@ -4,7 +4,7 @@ import { useAuth } from '@/hooks/useAuth'
 import {
   LogOut, Menu, X, LayoutDashboard, Users, Truck, FileText,
   History, Building2, Search, RotateCw, ScanLine, ShieldCheck,
-  UserCog, Link2, ScrollText
+  UserCog, Link2, ScrollText, HelpCircle
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { UserRole } from '@/types'
@@ -133,6 +133,12 @@ export function Layout({ children }: LayoutProps) {
       icon: ScanLine,
       path: '/verificar',
       roles: ['admin', 'operador'],
+    },
+    {
+      label: 'Ayuda / FAQ',
+      icon: HelpCircle,
+      path: '/faq',
+      roles: ['admin', 'operador', 'fiscalizador'],
     },
   ]
 

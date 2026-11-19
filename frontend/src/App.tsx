@@ -18,6 +18,7 @@ import { TucPublicaPage } from '@/pages/TucPublica'
 import { FiscalizadorHome } from '@/pages/FiscalizadorHome'
 import { VerificarPage } from '@/pages/Verificar'
 import { BitacoraAuditoria } from '@/pages/BitacoraAuditoria'
+import { FaqPage } from '@/pages/Faq'
 import { Toaster } from 'sonner'
 import './index.css'
 
@@ -97,6 +98,11 @@ export default function App() {
         <Route path="/verificar" element={
           <ProtectedRoute allowedRoles={ALL_STAFF}>
             <VerificarPage />
+          </ProtectedRoute>
+        } />
+        <Route path="/faq" element={
+          <ProtectedRoute allowedRoles={ALL_STAFF}>
+            <FaqPage />
           </ProtectedRoute>
         } />
 

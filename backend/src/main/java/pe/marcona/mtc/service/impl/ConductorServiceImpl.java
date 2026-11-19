@@ -103,7 +103,8 @@ public class ConductorServiceImpl implements IConductorService {
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Chofer no encontrado"));
 
         long id = ((Number) conductor.get("id")).longValue();
-        auditoriaService.registrarAccion(idActor, "crear", "chofer", id, "Chofer creado: " + nombre, solicitud);
+        auditoriaService.registrarAccion(idActor, "CREAR", "conductor", id,
+                String.format("Creación de conductor: %s (DNI %s, Licencia %s)", nombre, dni, licencia), solicitud);
         log.info("Conductor creado exitosamente: id={}, dni={}", id, dni);
 
         return formatearFechas(conductor);
@@ -112,7 +113,7 @@ public class ConductorServiceImpl implements IConductorService {
     @Override
     public Map<String, Object> actualizarConductor(Map<String, Object> entrada, HttpServletRequest solicitud, long idActor) {
         long id = parsearIdPositivo(entrada.get("id"));
-        conductorDao.obtenerPorId(id)
+        Map<String, Object> conductorPrevio = conductorDao.obtenerPorId(id)
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Chofer no encontrado"));
 
         Map<String, Object> campos = new LinkedHashMap<>();
@@ -150,8 +151,35 @@ public class ConductorServiceImpl implements IConductorService {
             throw errorValidacion("El DNI o número de licencia ya está registrado");
         }
 
-        auditoriaService.registrarAccion(idActor, "actualizar", "chofer", id, "Chofer actualizado", solicitud);
-        log.info("Conductor actualizado: id={}", id);
+        String accionAuditoria = "ACTUALIZAR";
+        String descripcionAuditoria;
+        String nombreChofer = String.valueOf(conductorPrevio.getOrDefault("nombre_completo", "ID " + id));
+        String dniChofer = String.valueOf(conductorPrevio.getOrDefault("dni", ""));
+
+        if (campos.containsKey("estado")) {
+            String nuevoEstado = String.valueOf(campos.get("estado")).toLowerCase();
+            String estadoAnterior = String.valueOf(conductorPrevio.getOrDefault("estado", "activo")).toLowerCase();
+            if (!nuevoEstado.equals(estadoAnterior)) {
+                if ("inactivo".equals(nuevoEstado) || "suspendido".equals(nuevoEstado)) {
+                    accionAuditoria = "ANULAR";
+                    descripcionAuditoria = String.format("Anulación de conductor: %s (DNI %s). Estado: %s -> %s",
+                            nombreChofer, dniChofer, estadoAnterior.toUpperCase(), nuevoEstado.toUpperCase());
+                } else {
+                    accionAuditoria = "REACTIVAR";
+                    descripcionAuditoria = String.format("Reactivación de conductor: %s (DNI %s). Estado: %s -> ACTIVO",
+                            nombreChofer, dniChofer, estadoAnterior.toUpperCase());
+                }
+            } else {
+                descripcionAuditoria = String.format("Actualización de datos del conductor %s (DNI %s) (campos modificados: %s)",
+                        nombreChofer, dniChofer, String.join(", ", campos.keySet()));
+            }
+        } else {
+            descripcionAuditoria = String.format("Actualización de datos del conductor %s (DNI %s) (campos modificados: %s)",
+                    nombreChofer, dniChofer, String.join(", ", campos.keySet()));
+        }
+
+        auditoriaService.registrarAccion(idActor, accionAuditoria, "conductor", id, descripcionAuditoria, solicitud);
+        log.info("Conductor actualizado: id={}, accion={}", id, accionAuditoria);
 
         return formatearFechas(conductorDao.obtenerPorId(id)
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Chofer no encontrado")));

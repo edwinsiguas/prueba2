@@ -95,7 +95,8 @@ public class VehiculoMutacionServiceImpl implements IVehiculoMutacionService {
 
         List<String> imagenesAlmacenadas = procesarYGuardarImagenes(idVehiculo, archivos, 0);
 
-        auditoriaService.registrarAccion(idActor, "crear", "vehiculo", idVehiculo, "Vehículo creado: " + placa, solicitud);
+        auditoriaService.registrarAccion(idActor, "CREAR", "vehiculo", idVehiculo,
+                String.format("Creación de vehículo placa %s (%s %s, Color %s)", placa, marca, modelo, color), solicitud);
         log.info("Vehículo creado exitosamente: id={}, placa={}", idVehiculo, placa);
 
         return Map.of(
@@ -117,9 +118,9 @@ public class VehiculoMutacionServiceImpl implements IVehiculoMutacionService {
             throw new ApiException(HttpStatus.BAD_REQUEST, "ID inválido");
         }
 
-        if (vehiculoMutacionDao.obtenerPorId(idVehiculo).isEmpty()) {
-            throw new ApiException(HttpStatus.NOT_FOUND, "Vehículo no encontrado");
-        }
+        Map<String, Object> vehiculoPrevio = vehiculoMutacionDao.obtenerPorId(idVehiculo)
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Vehículo no encontrado"));
+        String placaActual = String.valueOf(vehiculoPrevio.get("placa"));
 
         List<String> clausulas = new ArrayList<>();
         List<Object> parametros = new ArrayList<>();
@@ -186,8 +187,38 @@ public class VehiculoMutacionServiceImpl implements IVehiculoMutacionService {
         clausulas.add("updated_at = NOW()");
         vehiculoMutacionDao.actualizarVehiculo(idVehiculo, clausulas, parametros);
 
-        auditoriaService.registrarAccion(idActor, "actualizar", "vehiculo", idVehiculo, "Vehículo actualizado", solicitud);
-        log.info("Vehículo actualizado: id={}", idVehiculo);
+        String accionAuditoria = "ACTUALIZAR";
+        String descripcionAuditoria;
+        String placaVehiculo = nuevaPlaca != null ? nuevaPlaca : placaActual;
+        List<String> camposModificados = clausulas.stream()
+                .map(c -> c.split(" =")[0].trim())
+                .filter(c -> !c.equalsIgnoreCase("updated_at"))
+                .toList();
+
+        if (datos.containsKey("estado")) {
+            String nuevoEstado = texto(datos.get("estado")).toLowerCase();
+            String estadoAnterior = String.valueOf(vehiculoPrevio.getOrDefault("estado", "activo")).toLowerCase();
+            if (!nuevoEstado.equals(estadoAnterior)) {
+                if ("inactivo".equals(nuevoEstado)) {
+                    accionAuditoria = "DESACTIVAR";
+                    descripcionAuditoria = String.format("Desactivación/Anulación de vehículo placa %s (%s %s). Estado: %s -> INACTIVO",
+                            placaVehiculo, vehiculoPrevio.get("marca"), vehiculoPrevio.get("modelo"), estadoAnterior.toUpperCase());
+                } else {
+                    accionAuditoria = "REACTIVAR";
+                    descripcionAuditoria = String.format("Reactivación de vehículo placa %s (%s %s). Estado: %s -> ACTIVO",
+                            placaVehiculo, vehiculoPrevio.get("marca"), vehiculoPrevio.get("modelo"), estadoAnterior.toUpperCase());
+                }
+            } else {
+                descripcionAuditoria = String.format("Actualización de datos del vehículo placa %s (campos modificados: %s)",
+                        placaVehiculo, String.join(", ", camposModificados));
+            }
+        } else {
+            descripcionAuditoria = String.format("Actualización de datos del vehículo placa %s (campos modificados: %s)",
+                    placaVehiculo, String.join(", ", camposModificados));
+        }
+
+        auditoriaService.registrarAccion(idActor, accionAuditoria, "vehiculo", idVehiculo, descripcionAuditoria, solicitud);
+        log.info("Vehículo actualizado: id={}, accion={}", idVehiculo, accionAuditoria);
 
         return vehiculoMutacionDao.obtenerPorId(idVehiculo)
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Vehículo no encontrado"));
@@ -220,8 +251,8 @@ public class VehiculoMutacionServiceImpl implements IVehiculoMutacionService {
 
         List<String> almacenadas = procesarYGuardarImagenes(idVehiculo, archivos, totalImagenesActual);
 
-        auditoriaService.registrarAccion(idActor, "subir_imagen_vehiculo", "vehiculo", idVehiculo,
-                "Imágenes cargadas para vehículo ID " + idVehiculo, solicitud);
+        auditoriaService.registrarAccion(idActor, "ACTUALIZAR", "vehiculo", idVehiculo,
+                String.format("Carga de %d imagen(es) para vehículo placa %s", almacenadas.size(), vehiculo.get("placa")), solicitud);
 
         log.info("Imágenes subidas para vehículo id={}: {}", idVehiculo, almacenadas.size());
 
@@ -240,10 +271,17 @@ public class VehiculoMutacionServiceImpl implements IVehiculoMutacionService {
         String nuevoEstado = "activo".equals(vehiculo.get("estado")) ? "inactivo" : "activo";
         vehiculoMutacionDao.alternarEstado(idVehiculo, nuevoEstado);
 
-        auditoriaService.registrarAccion(idActor, "cambio_estado", "vehiculo", idVehiculo,
-                "Estado de vehículo '" + vehiculo.get("placa") + "' cambiado a " + nuevoEstado, solicitud);
+        String accionAuditoria = "inactivo".equals(nuevoEstado) ? "DESACTIVAR" : "REACTIVAR";
+        String descripcionAuditoria = "inactivo".equals(nuevoEstado)
+                ? String.format("Desactivación/Anulación de vehículo placa %s (%s %s). Estado: ACTIVO -> INACTIVO",
+                        vehiculo.get("placa"), vehiculo.get("marca"), vehiculo.get("modelo"))
+                : String.format("Reactivación de vehículo placa %s (%s %s). Estado: INACTIVO -> ACTIVO",
+                        vehiculo.get("placa"), vehiculo.get("marca"), vehiculo.get("modelo"));
 
-        log.info("Estado de vehículo alternado: id={}, nuevoEstado={}", idVehiculo, nuevoEstado);
+        auditoriaService.registrarAccion(idActor, accionAuditoria, "vehiculo", idVehiculo,
+                descripcionAuditoria, solicitud);
+
+        log.info("Estado de vehículo alternado: id={}, accion={}, nuevoEstado={}", idVehiculo, accionAuditoria, nuevoEstado);
 
         return Map.of("id", idVehiculo, "estado", nuevoEstado);
     }
