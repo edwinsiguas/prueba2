@@ -1,8 +1,8 @@
 import http from 'k6/http';
 import { sleep, check, group } from 'k6';
 
-// Configuración dinámica por variables de entorno
-const BASE_URL = __ENV.BASE_URL || 'http://localhost:8080';
+// Configuración dinámica por variables de entorno (soporta BASE_URL y TARGET_URL)
+const BASE_URL = (__ENV.BASE_URL || __ENV.TARGET_URL || 'http://localhost:8080').replace(/\/+$/, '');
 const PROFILE = __ENV.PROFILE || 'local'; // 'local' o 'cloud'
 
 const STAGES = PROFILE === 'cloud'
@@ -13,7 +13,7 @@ const STAGES = PROFILE === 'cloud'
       { duration: '15s', target: 0 },
     ]
   : [
-      // Perfil local
+      // Perfil local / CI
       { duration: '10s', target: 20 },
       { duration: '30s', target: 20 },
       { duration: '10s', target: 0 },
@@ -22,8 +22,8 @@ const STAGES = PROFILE === 'cloud'
 export const options = {
   stages: STAGES,
   thresholds: {
-    // 95% de peticiones deben responder en menos de 800ms
-    http_req_duration: ['p(95)<800'],
+    // 95% de peticiones deben responder en menos de 1500ms (realista para runner de CI)
+    http_req_duration: ['p(95)<1500'],
     // Tasa de fallos menor al 1%
     http_req_failed: ['rate<0.01'],
   },

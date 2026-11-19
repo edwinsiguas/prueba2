@@ -185,15 +185,53 @@ jobs:
           name: backend-jar
           path: backend/target/
 
+      - name: Levantar Base de Datos (MySQL) para Pruebas
+        run: |
+          cd infraestructura
+          docker compose up -d db
+          sleep 15
+
       - name: Iniciar Backend desde el JAR
         run: |
           cd backend/target
+          export SPRING_DATASOURCE_URL="jdbc:mysql://localhost:3306/marcona_permisos?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=America/Lima"
+          export SPRING_DATASOURCE_USERNAME="root"
+          export SPRING_DATASOURCE_PASSWORD=""
           nohup java -jar *.jar > backend.log 2>&1 &
-          sleep 40 # Esperar a que Spring Boot levante completamente
 
-      - name: Instalar y Ejecutar k6
-        uses: grafana/k6-action@v0.3.1
-        with:
-          filename: infraestructura/k6/load-test.js
+      - name: Esperar a que el Backend esté listo (Health Check Loop)
+        run: |
+          echo "Verificando disponibilidad de http://localhost:8080/actuator/health..."
+          TIMEOUT=60
+          READY=0
+          for i in $(seq 1 $TIMEOUT); do
+            HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" --max-time 2 http://localhost:8080/actuator/health || true)
+            if [ "$HTTP_CODE" = "200" ]; then
+              echo "✅ Backend disponible y en estado UP tras ${i} segundos."
+              READY=1
+              break
+            fi
+            sleep 1
+          done
+
+          if [ $READY -eq 0 ]; then
+            echo "❌ [TIMEOUT] El backend no respondió UP tras ${TIMEOUT} segundos. Logs de Spring Boot:"
+            cat backend/target/backend.log || true
+            exit 1
+          fi
+
+      - name: Ejecutar pruebas de carga con k6 (Docker con red host)
+        run: |
+          docker run --rm --network host \
+            -v "${{ github.workspace }}:/ci" -w /ci \
+            -e BASE_URL="http://localhost:8080" \
+            -e PROFILE="local" \
+            grafana/k6:latest run infraestructura/k6/load-test.js
+
+      - name: Mostrar logs de Spring Boot si falla
+        if: failure()
+        run: |
+          echo "=== LOGS DEL BACKEND SPRING BOOT ==="
+          cat backend/target/backend.log || true
 
   
