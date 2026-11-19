@@ -1,0 +1,48 @@
+name: Respaldo Automatizado de Base de Datos (TiDB Cloud)
+
+on:
+  schedule:
+    # 07:00 UTC = 02:00 AM Hora de Lima / Perú (America/Lima, UTC-5)
+    - cron: '0 7 * * *'
+  workflow_dispatch:
+    inputs:
+      motivo:
+        description: 'Motivo del respaldo manual'
+        required: false
+        default: 'Ejecución manual preventiva'
+
+jobs:
+  backup:
+    name: Ejecutar Respaldo TiDB Cloud y Almacenar Artefacto
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Descargar código fuente del repositorio
+        uses: actions/checkout@v4
+
+      - name: Instalar cliente MySQL (mysqldump 8.0)
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq default-mysql-client
+
+      - name: Ejecutar script de respaldo oficial de TiDB Cloud
+        env:
+          DB_HOST: ${{ secrets.TIDB_HOST }}
+          DB_PORT: ${{ secrets.TIDB_PORT }}
+          DB_NAME: ${{ secrets.TIDB_NAME }}
+          DB_USER: ${{ secrets.TIDB_USER }}
+          DB_PASSWORD: ${{ secrets.TIDB_PASSWORD }}
+          BACKUP_DIR: ${{ github.workspace }}/backups
+        run: |
+          chmod +x ./infraestructura/scripts/BACKUP_TIDB_CLOUD.sh
+          ./infraestructura/scripts/BACKUP_TIDB_CLOUD.sh
+
+      - name: Subir artefacto cifrado/comprimido con retención de 14 días
+        uses: actions/upload-artifact@v4
+        with:
+          name: tidb-cloud-backup-${{ github.run_id }}
+          path: |
+            backups/*.sql.gz
+            backups/*.sha256
+          retention-days: 14
+          if-no-files-found: error
