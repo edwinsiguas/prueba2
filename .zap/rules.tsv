@@ -1,0 +1,4 @@
+90022	IGNORE	(Application Error Disclosure en Swagger)
+10023	IGNORE	(Information Disclosure Debug Errors)
+10049	IGNORE	(Non-Storable Content en API)
+90005	IGNORE	(Sec-Fetch Headers Missing en API)

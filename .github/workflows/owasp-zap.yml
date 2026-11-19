@@ -108,7 +108,7 @@ jobs:
   security_scan:
     name:  Escaneo de Seguridad (OWASP ZAP)
     needs: build
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout del código (Para infraestructura)
         uses: actions/checkout@v4
@@ -134,17 +134,41 @@ jobs:
       - name: Iniciar Backend desde el JAR (Producción Simulada)
         run: |
           cd backend/target
+          export SPRING_DATASOURCE_URL="jdbc:mysql://localhost:3306/marcona_permisos?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=America/Lima"
+          export SPRING_DATASOURCE_USERNAME="root"
+          export SPRING_DATASOURCE_PASSWORD=""
           nohup java -jar *.jar > backend.log 2>&1 &
-          sleep 45
 
-      - name: Configurar reglas de ZAP (Ignorar Falsos Positivos)
+      - name: Esperar a que el Backend esté listo (Health Check Loop)
+        run: |
+          echo "Verificando disponibilidad de http://localhost:8080/actuator/health y http://localhost:8080/v3/api-docs..."
+          TIMEOUT=60
+          READY=0
+          for i in $(seq 1 $TIMEOUT); do
+            HEALTH_CODE=$(curl -s -o /dev/null -w "%{http_code}" --max-time 2 http://localhost:8080/actuator/health || true)
+            DOCS_CODE=$(curl -s -o /dev/null -w "%{http_code}" --max-time 2 http://localhost:8080/v3/api-docs || true)
+            if [ "$HEALTH_CODE" = "200" ] && [ "$DOCS_CODE" = "200" ]; then
+              echo "✅ Backend listo (Health: 200, Docs: 200) tras ${i} segundos."
+              READY=1
+              break
+            fi
+            sleep 1
+          done
+
+          if [ $READY -eq 0 ]; then
+            echo "❌ [TIMEOUT] El backend no respondió 200 tras ${TIMEOUT} segundos. Logs de Spring Boot:"
+            cat backend/target/backend.log || true
+            exit 1
+          fi
+
+      - name: Configurar reglas y permisos de ZAP (Ignorar Falsos Positivos)
         run: |
           mkdir -p .zap
-          echo -e "90022\tIGNORE\t(Application Error Disclosure en Swagger)" > .zap/rules.tsv
-          echo -e "10023\tIGNORE\t(Information Disclosure Debug Errors)" >> .zap/rules.tsv
-          echo -e "10049\tIGNORE\t(Non-Storable Content en API)" >> .zap/rules.tsv
-          echo -e "90005\tIGNORE\t(Sec-Fetch Headers Missing en API)" >> .zap/rules.tsv
-          chmod -R 777 $GITHUB_WORKSPACE
+          printf "90022\tIGNORE\t(Application Error Disclosure en Swagger)\n" > .zap/rules.tsv
+          printf "10023\tIGNORE\t(Information Disclosure Debug Errors)\n" >> .zap/rules.tsv
+          printf "10049\tIGNORE\t(Non-Storable Content en API)\n" >> .zap/rules.tsv
+          printf "90005\tIGNORE\t(Sec-Fetch Headers Missing en API)\n" >> .zap/rules.tsv
+          chmod -R 777 "$GITHUB_WORKSPACE"
 
       - name: Ejecutar OWASP ZAP Baseline
         uses: zaproxy/action-baseline@v0.15.0
@@ -152,8 +176,8 @@ jobs:
           target: 'http://localhost:8080/v3/api-docs'
           rules_file_name: '.zap/rules.tsv'
           allow_issue_writing: false
-          artifact_name: '' 
-          cmd_options: '-a'
+          artifact_name: 'zap-baseline-report'
+          cmd_options: '-a -d'
           
       - name: Guardar Reporte de Seguridad HTML
         if: always()
@@ -161,6 +185,12 @@ jobs:
         with:
           name: ZAP-Security-Report
           path: report_html.html
+
+      - name: Mostrar logs de Spring Boot si falla
+        if: failure()
+        run: |
+          echo "=== LOGS DEL BACKEND SPRING BOOT ==="
+          cat backend/target/backend.log || true
           
   # ==========================================
   # CAJA 5: PRUEBAS DE CARGA (k6) (Depende de Build)
