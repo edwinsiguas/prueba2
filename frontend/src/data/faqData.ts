@@ -40,6 +40,7 @@ const ADMIN_CONTENT: RoleFaqContent = {
     'Padrón y Concesiones',
     'Permisos, TUC y Reportes',
     'Seguridad y Cuenta Admin',
+    'Monitoreo y Mantenimiento',
   ],
   items: [
     {
@@ -172,6 +173,37 @@ const ADMIN_CONTENT: RoleFaqContent = {
       answer:
         'Para cambiar la contraseña de tu cuenta administradora, presiona "Editar Perfil" en la parte inferior del menú lateral. Ingresa tu nueva contraseña (mínimo 8 caracteres, combinando mayúsculas, números y símbolos) y guarda los cambios. Te recomendamos cerrar sesión e iniciarla nuevamente para renovar tu token criptográfico JWT.',
       keywords: ['cambiar contraseña admin', 'password', 'seguridad cuenta', 'editar perfil'],
+    },
+    {
+      id: 'adm-11',
+      category: 'Monitoreo y Mantenimiento',
+      question: '¿Cómo usar el panel /monitoreo para revisar la salud del sistema?',
+      answer:
+        'El panel de Monitoreo es exclusivo del Administrador y resume en una sola pantalla la salud del servidor, la base de datos y el rendimiento de la API:',
+      steps: [
+        'Abre "Monitoreo" en el menú lateral (solo visible para tu rol).',
+        'Revisa el indicador global (Operativo / Degradado) y las tarjetas de Memoria JVM, CPU, Disco y Base de Datos. Verde: menos de 70 %, ámbar: 70–85 %, rojo: más de 85 %.',
+        'En la pestaña "Rendimiento HTTP" consulta peticiones lentas (500 ms o más) y errores recientes con su X-Request-ID para ubicarlos en los logs.',
+        'Usa "Actualizar ahora" o activa el auto-refresco de 15 segundos solo cuando lo necesites, para cuidar las unidades de consumo (RUs) de la base de datos en la nube.',
+      ],
+      note: 'Para auditar acciones funcionales de los usuarios usa la Bitácora; el panel de Monitoreo muestra solo métricas técnicas.',
+      keywords: ['monitoreo', 'salud sistema', 'memoria jvm', 'cpu', 'disco', 'hikari', 'rendimiento', 'x-request-id'],
+      actionLink: { label: 'Abrir Monitoreo del Sistema', to: '/monitoreo' },
+    },
+    {
+      id: 'adm-12',
+      category: 'Monitoreo y Mantenimiento',
+      question: '¿Cómo ejecutar manualmente los Cron Jobs de mantenimiento?',
+      answer:
+        'El sistema ejecuta automáticamente tres tareas diarias (zona horaria America/Lima): EXPIRE_PERMITS (00:05), CLEANUP_RATE_LIMITS (02:30) y CHECK_UPCOMING_EXPIRATIONS (07:00). Puedes dispararlas en vivo:',
+      steps: [
+        'Ingresa a "Monitoreo" y abre la pestaña "Mantenimiento y Cron Jobs".',
+        'Ubica la tarea deseada y presiona "Ejecutar ahora".',
+        'Espera el resultado inmediato: registros procesados, duración y mensaje de resumen.',
+        'Cada ejecución manual queda registrada en la Bitácora de auditoría con tu usuario.',
+      ],
+      keywords: ['cron', 'cron jobs', 'mantenimiento', 'ejecutar ahora', 'expire permits', 'rate limits', 'vencimientos'],
+      actionLink: { label: 'Ir a Mantenimiento', to: '/monitoreo' },
     },
   ],
 }

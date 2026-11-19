@@ -89,6 +89,12 @@ public/uploads/
 *.sql.gz
 *.dump
 *.bak
+*.sha256
+backups/*.sql
+backups/*.sql.gz
+backups/*.sha256
+backups/
+/tmp/mtc-logs/
 
 # ─── Runtime / temp ───────────────────────────────────────────────────────────
 tmp/

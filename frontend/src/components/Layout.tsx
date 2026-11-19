@@ -4,7 +4,7 @@ import { useAuth } from '@/hooks/useAuth'
 import {
   LogOut, Menu, X, LayoutDashboard, Users, Truck, FileText,
   History, Building2, Search, RotateCw, ScanLine, ShieldCheck,
-  UserCog, Link2, ScrollText, HelpCircle
+  UserCog, Link2, ScrollText, HelpCircle, Activity
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { UserRole } from '@/types'
@@ -111,6 +111,14 @@ export function Layout({ children }: LayoutProps) {
       label: 'Usuarios',
       icon: UserCog,
       path: '/usuarios',
+      roles: ['admin'],
+      badge: 'Admin',
+    },
+
+    {
+      label: 'Monitoreo',
+      icon: Activity,
+      path: '/monitoreo',
       roles: ['admin'],
       badge: 'Admin',
     },

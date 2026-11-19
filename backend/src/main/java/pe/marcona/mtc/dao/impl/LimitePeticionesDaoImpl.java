@@ -44,6 +44,12 @@ public class LimitePeticionesDaoImpl implements ILimitePeticionesDao {
         String sql = "INSERT INTO rate_limits (ip, action) VALUES (?, ?)";
         jdbcTemplate.update(sql, ip, accion);
     }
+
+    @Override
+    public int eliminarAnterioresA(int horas) {
+        String sql = "DELETE FROM rate_limits WHERE created_at < DATE_SUB(NOW(), INTERVAL ? HOUR)";
+        return jdbcTemplate.update(sql, horas);
+    }
 }
 
 

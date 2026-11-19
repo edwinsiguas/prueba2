@@ -67,6 +67,7 @@ public class CorsConfiguration implements WebMvcConfigurer {
                 .allowedOriginPatterns(origins)
                 .allowedMethods("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS")
                 .allowedHeaders("*")
+                .exposedHeaders("X-Request-ID")
                 .allowCredentials(true)
                 .maxAge(86400L);
     }
@@ -79,6 +80,7 @@ public class CorsConfiguration implements WebMvcConfigurer {
         config.setAllowCredentials(true);
         config.setAllowedOriginPatterns(List.of(origins));
         config.setAllowedHeaders(List.of("*"));
+        config.setExposedHeaders(List.of("X-Request-ID"));
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
         config.setMaxAge(86400L);
         source.registerCorsConfiguration("/**", config);

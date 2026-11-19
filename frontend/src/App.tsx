@@ -19,6 +19,7 @@ import { FiscalizadorHome } from '@/pages/FiscalizadorHome'
 import { VerificarPage } from '@/pages/Verificar'
 import { BitacoraAuditoria } from '@/pages/BitacoraAuditoria'
 import { FaqPage } from '@/pages/Faq'
+import { MonitoreoMantenimiento } from '@/pages/MonitoreoMantenimiento'
 import { Toaster } from 'sonner'
 import './index.css'
 
@@ -159,6 +160,11 @@ export default function App() {
         } />
 
         {}
+        <Route path="/monitoreo" element={
+          <ProtectedRoute allowedRoles={ADMIN_ONLY}>
+            <MonitoreoMantenimiento />
+          </ProtectedRoute>
+        } />
         <Route path="/usuarios" element={
           <ProtectedRoute allowedRoles={ADMIN_ONLY}>
             <UsersPage />

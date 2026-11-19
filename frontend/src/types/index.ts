@@ -199,4 +199,98 @@ export interface ApiResponse<T> {
   message: string | null
 }
 
+// ===== Monitoreo y Mantenimiento (solo admin) =====
+export interface DatabaseHealthMetrics {
+  status: 'UP' | 'DOWN'
+  latencyMs: number
+  message?: string
+  activeConnections: number
+  idleConnections: number
+  totalConnections: number
+  threadsAwaiting: number
+  maxPoolSize: number
+}
 
+export interface OsHealthMetrics {
+  osName: string
+  osArch: string
+  javaVersion?: string
+  availableProcessors: number
+  systemCpuLoad: number
+  processCpuLoad: number
+  heapUsedMB: number
+  heapMaxMB: number
+  heapUsagePercent: number
+  liveThreads?: number
+  diskTotalGB: number
+  diskFreeGB: number
+  diskUsagePercent: number
+  uptimeSeconds: number
+  uptimeFormatted: string
+}
+
+export interface RecentRequestEvent {
+  requestId: string
+  method: string
+  path: string
+  status: number
+  durationMs: number
+  timestamp: string
+  type: string
+}
+
+export interface PerformanceMetrics {
+  totalRequests: number
+  status2xx: number
+  status4xx: number
+  status5xx: number
+  errorRatePercent: number
+  successRatePercent: number
+  avgLatencyMs: number
+  maxLatencyMs: number
+  slowRequests: number
+  slowThresholdMs: number
+  recentEvents: RecentRequestEvent[]
+}
+
+export type CronJobState = 'IDLE' | 'SUCCESS' | 'ERROR'
+
+export interface CronJobStatus {
+  id: string
+  name: string
+  description: string
+  cronExpression: string
+  timezone: string
+  lastRunAt: string | null
+  lastStatus: CronJobState
+  lastDurationMs: number
+  lastAffectedCount: number
+  lastMessage: string
+  lastDetails?: Record<string, number>
+  running?: boolean
+  nextRunAt?: string | null
+}
+
+export interface CronJobRunResult {
+  id: string
+  status: CronJobState
+  affectedCount: number
+  durationMs: number
+  message: string
+  lastRunAt: string
+  details?: Record<string, number>
+}
+
+export interface MonitoringSummary {
+  generatedAt: string
+  health: {
+    status: 'UP' | 'DEGRADED'
+    service: string
+    application: string
+    environment: string
+    database: DatabaseHealthMetrics
+  }
+  osHealth: OsHealthMetrics
+  performance: PerformanceMetrics
+  maintenance: CronJobStatus[]
+}

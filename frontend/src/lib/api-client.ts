@@ -1,5 +1,11 @@
 import axios, { AxiosInstance, AxiosError } from 'axios'
-import { ActionLog, PaginatedResponse } from '@/types'
+import {
+  ActionLog,
+  PaginatedResponse,
+  ApiResponse,
+  MonitoringSummary,
+  CronJobRunResult,
+} from '@/types'
 
 const API_BASE_URL = (
   import.meta.env.VITE_API_URL || import.meta.env.VITE_JAVA_API_URL || 'http://localhost:8080/api'
@@ -306,6 +312,17 @@ class APIClient {
   async getAnalyticsHistory() {
     const response = await javaClient.get('/stats/analytics')
     return response.data
+  }
+  async getMonitoringSummary(): Promise<MonitoringSummary> {
+    const response = await javaClient.get<ApiResponse<MonitoringSummary>>('/monitoring/summary')
+    return response.data.data
+  }
+
+  async runMaintenanceJob(jobId: string): Promise<CronJobRunResult> {
+    const response = await javaClient.post<ApiResponse<CronJobRunResult>>(
+      `/monitoring/jobs/${jobId}/run`
+    )
+    return response.data.data
   }
 }
 

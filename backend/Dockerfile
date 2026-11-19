@@ -18,8 +18,8 @@ WORKDIR /app
 
 # Crear directorios necesarios (logs y uploads) con permisos para el usuario spring
 RUN addgroup -S spring && adduser -S spring -G spring && \
-    mkdir -p /app/logs /app/uploads && \
-    chown -R spring:spring /app
+    mkdir -p /app/logs /app/uploads /tmp/mtc-logs && \
+    chown -R spring:spring /app /tmp/mtc-logs
 
 # Copiar el artefacto generado con propietario spring
 COPY --from=build --chown=spring:spring /app/target/*.jar app.jar
@@ -29,6 +29,7 @@ USER spring:spring
 
 # Variables de entorno por defecto
 ENV PORT=8080
+ENV LOG_PATH=/tmp/mtc-logs
 EXPOSE 8080
 
 # Comando de inicio optimizado para contenedores de 512 MB (Render Free Tier)

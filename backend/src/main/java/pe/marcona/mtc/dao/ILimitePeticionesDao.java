@@ -10,6 +10,9 @@ public interface ILimitePeticionesDao {
     Long obtenerSegundosRestantes(String ip, String accion, int segundosVentana);
 
     void registrarPeticion(String ip, String accion);
+
+    /** Elimina los registros de rate_limits con antigüedad mayor a las horas indicadas; retorna filas borradas. */
+    int eliminarAnterioresA(int horas);
 }
 
 

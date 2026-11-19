@@ -1,0 +1,23 @@
+# Configuración de recolección de métricas Prometheus para MTC Marcona
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  scrape_timeout: 10s
+
+scrape_configs:
+  # Monitoreo del servicio Spring Boot (Micrometer Actuator)
+  - job_name: 'mtc-backend-spring-boot'
+    metrics_path: '/actuator/prometheus'
+    scheme: 'http'
+    static_configs:
+      - targets: ['host.docker.internal:8080']
+        labels:
+          application: 'mtc-java-service'
+          environment: 'local'
+
+  # Monitoreo de salud de contenedores y recursos del SO mediante cAdvisor
+  - job_name: 'cadvisor'
+    static_configs:
+      - targets: ['cadvisor:8080']
+        labels:
+          environment: 'local'
